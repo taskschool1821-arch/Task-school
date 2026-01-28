@@ -22,14 +22,8 @@
         #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
         @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
         @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
-
-        /* สไตล์ข้อความแนะนำ */
         .guide-text { animation: bounce 2s infinite; }
-        @keyframes bounce {
-            0%, 20%, 50%, 80%, 100% {transform: translateY(0);}
-            40% {transform: translateY(-10px);}
-            60% {transform: translateY(-5px);}
-        }
+        @keyframes bounce { 0%, 20%, 50%, 80%, 100% {transform: translateY(0);} 40% {transform: translateY(-10px);} 60% {transform: translateY(-5px);} }
     </style>
 </head>
 <body>
@@ -62,9 +56,7 @@
         </div>
 
         <div id="guide-tooltip" class="fixed bottom-28 right-6 z-50 flex flex-col items-center">
-            <div class="bg-blue-600/80 text-white text-xs py-2 px-4 rounded-full shadow-lg guide-text backdrop-blur-sm">
-                กด + เพื่อเพิ่มงาน
-            </div>
+            <div class="bg-blue-600/80 text-white text-xs py-2 px-4 rounded-full shadow-lg guide-text backdrop-blur-sm">กด + เพื่อเพิ่มงาน</div>
             <div class="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] border-t-blue-600/80"></div>
         </div>
 
@@ -117,15 +109,12 @@
                 oscillator.start();
                 gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.5);
                 oscillator.stop(audioCtx.currentTime + 0.5);
-            } catch (e) { console.log("Audio block by browser"); }
+            } catch (e) { console.log("Audio block"); }
         }
 
         window.onload = function() {
             const savedUser = localStorage.getItem('task_school_user');
-            if (savedUser) {
-                user = JSON.parse(savedUser);
-                showDashboard();
-            }
+            if (savedUser) { user = JSON.parse(savedUser); showDashboard(); }
         };
 
         function showToast(msg) {
@@ -145,11 +134,6 @@
         }
 
         function showDashboard() {
-            if (!user.email) {
-                const saved = localStorage.getItem('task_school_user');
-                if (saved) user = JSON.parse(saved);
-                else return logout();
-            }
             document.getElementById('user-name').innerText = user.name;
             document.getElementById('login-screen').classList.add('hidden');
             document.getElementById('dashboard').classList.remove('hidden');
@@ -191,11 +175,9 @@
                         <div class="dropdown relative">
                             <button class="p-2 text-gray-300 hover:text-gray-600 text-2xl">⋮</button>
                             <div class="dropdown-content">
-                                ${isDeleted ? 
-                                    `<button onclick="restoreNote(${n.id})" class="w-full text-left p-3 text-sm font-bold text-blue-500">กู้คืน</button>` : 
-                                    `<button onclick='editNote(${JSON.stringify(n)})' class="w-full text-left p-3 text-sm font-bold text-gray-700 border-b">แก้ไข</button>
-                                     <button onclick="moveToTrash(${n.id})" class="w-full text-left p-3 text-sm font-bold text-red-500">ลบโน้ต</button>`
-                                }
+                                ${isDeleted ? `<button onclick="restoreNote(${n.id})" class="w-full text-left p-3 text-sm font-bold text-blue-500">กู้คืน</button>` : 
+                                `<button onclick='editNote(${JSON.stringify(n)})' class="w-full text-left p-3 text-sm font-bold text-gray-700 border-b">แก้ไข</button>
+                                 <button onclick="moveToTrash(${n.id})" class="w-full text-left p-3 text-sm font-bold text-red-500">ลบ</button>`}
                             </div>
                         </div>
                     </div>
@@ -204,11 +186,8 @@
         }
 
         function openModal() {
-            const guide = document.getElementById('guide-tooltip');
-            if(guide) guide.classList.add('hidden'); // ซ่อนคำแนะนำทันทีเมื่อเริ่มกดเพิ่มงาน
-
+            if(document.getElementById('guide-tooltip')) document.getElementById('guide-tooltip').classList.add('hidden');
             document.getElementById('modal').classList.remove('hidden');
-            document.getElementById('modal-title').innerText = 'จดบันทึกงาน';
             document.getElementById('edit-id').value = '';
             document.getElementById('title').value = '';
             document.getElementById('content').value = '';
@@ -226,7 +205,11 @@
             const time = document.getElementById('time').value || "00:00";
 
             if(!title || !date) return alert('กรุณาระบุหัวข้อและวันที่');
-            const fullDateTime = `${date}T${time}:00`;
+            
+            // สร้างวันเวลาแบบไม่พึ่งพา Timezone ท้องถิ่น เพื่อส่งไป Supabase
+            const fullDateTime = `${date}T${time}:00`; 
+            const dueDate = new Date(fullDateTime);
+            const today = new Date();
 
             const payload = {
                 name: user.name, 
@@ -241,28 +224,29 @@
             if(!res.error) {
                 playNotificationSound();
                 
-                const dueDate = new Date(fullDateTime);
-                const today = new Date();
-                const timeDiff = dueDate.getTime() - today.getTime();
-                const daysLeft = Math.ceil(timeDiff / (1000 * 3600 * 24));
+                const timeDiffMs = dueDate - today;
+                const hoursLeft = Math.floor(timeDiffMs / (1000 * 60 * 60));
+                const daysLeft = Math.floor(hoursLeft / 24);
 
-                const alertDays = [5, 3, 2, 1, 0];
-                if (alertDays.includes(daysLeft)) {
+                let timeMsg = "";
+                if (hoursLeft < 0) timeMsg = "เลยกำหนดส่งแล้ว";
+                else if (hoursLeft < 24) timeMsg = `เหลือเวลาอีก ${hoursLeft} ชั่วโมง`;
+                else timeMsg = `เหลือเวลาอีก ${daysLeft} วัน`;
+
+                if (hoursLeft >= 0 && daysLeft <= 5) {
                     emailjs.send("service_xpfnqyd", "template_9qrfhh6", {
                         nickname: user.name,
                         title: title,
-                        due_date: new Date(fullDateTime).toLocaleString('th-TH'),
-                        days_left: daysLeft,
+                        due_date: dueDate.toLocaleString('th-TH'),
+                        days_left: timeMsg, // ส่งข้อความสำเร็จรูปไปให้ EmailJS
                         to_email: user.email
                     }).then(() => {
-                        showToast(`แจ้งเตือน ${daysLeft} วัน ส่งเมลแล้ว!`);
-                        setTimeout(playNotificationSound, 300); 
+                        showToast(`แจ้งเตือน: ${timeMsg} ส่งเมลแล้ว!`);
                     });
                 } else {
                     showToast("บันทึกเรียบร้อย!");
                 }
-                closeModal(); 
-                fetchNotes(); 
+                closeModal(); fetchNotes(); 
             }
         }
 
@@ -284,20 +268,12 @@
 
         function editNote(n) {
             document.getElementById('modal').classList.remove('hidden');
-            document.getElementById('modal-title').innerText = 'แก้ไขบันทึก';
             document.getElementById('edit-id').value = n.id;
             document.getElementById('title').value = n.title;
             document.getElementById('content').value = n.content;
-            
             const dt = new Date(n.due_date);
-            const yyyy = dt.getFullYear();
-            const mm = String(dt.getMonth() + 1).padStart(2, '0');
-            const dd = String(dt.getDate()).padStart(2, '0');
-            const hh = String(dt.getHours()).padStart(2, '0');
-            const min = String(dt.getMinutes()).padStart(2, '0');
-            
-            document.getElementById('date').value = `${yyyy}-${mm}-${dd}`;
-            document.getElementById('time').value = `${hh}:${min}`;
+            document.getElementById('date').value = dt.toISOString().split('T')[0];
+            document.getElementById('time').value = dt.toTimeString().substring(0,5);
         }
     </script>
 </body>
