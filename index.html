@@ -22,6 +22,14 @@
         #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
         @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
         @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
+
+        /* สไตล์ข้อความแนะนำ */
+        .guide-text { animation: bounce 2s infinite; }
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {transform: translateY(0);}
+            40% {transform: translateY(-10px);}
+            60% {transform: translateY(-5px);}
+        }
     </style>
 </head>
 <body>
@@ -48,9 +56,18 @@
                 <button id="btn-trash" onclick="changeView('trash')" class="px-5 py-2 rounded-full bg-gray-100 text-gray-500 text-sm font-bold">เพิ่งลบไป</button>
             </div>
         </nav>
+
         <div class="max-w-4xl mx-auto p-4">
             <div id="note-list" class="flex flex-col gap-4"></div>
         </div>
+
+        <div id="guide-tooltip" class="fixed bottom-28 right-6 z-50 flex flex-col items-center">
+            <div class="bg-blue-600/80 text-white text-xs py-2 px-4 rounded-full shadow-lg guide-text backdrop-blur-sm">
+                กด + เพื่อเพิ่มงาน
+            </div>
+            <div class="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] border-t-blue-600/80"></div>
+        </div>
+
         <button onclick="openModal()" class="fixed bottom-8 right-8 w-16 h-16 bg-blue-600 text-white rounded-full text-4xl shadow-2xl flex items-center justify-center transition hover:scale-110 z-50">+</button>
     </div>
 
@@ -73,8 +90,8 @@
             </div>
             
             <div class="flex gap-4">
-                <button onclick="closeModal()" class="flex-1 p-4 text-gray-400 font-bold">ยกเลิก</button>
-                <button onclick="saveNote()" id="btn-save" class="flex-1 p-4 bg-blue-600 text-white rounded-2xl font-bold shadow-lg">บันทึก</button>
+                <button type="button" onclick="closeModal()" class="flex-1 p-4 text-gray-400 font-bold">ยกเลิก</button>
+                <button type="button" onclick="saveNote()" id="btn-save" class="flex-1 p-4 bg-blue-600 text-white rounded-2xl font-bold shadow-lg">บันทึก</button>
             </div>
         </div>
     </div>
@@ -87,22 +104,20 @@
         let user = { name: '', email: '' };
         let currentView = 'all';
 
-        // ฟังก์ชันสร้างเสียงแจ้งเตือน (Beep Sound)
         function playNotificationSound() {
-            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const oscillator = audioCtx.createOscillator();
-            const gainNode = audioCtx.createGain();
-
-            oscillator.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
-
-            oscillator.type = 'sine'; // เสียงนุ่มๆ
-            oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // ความถี่เสียง
-            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime); // ความดัง
-
-            oscillator.start();
-            gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.5);
-            oscillator.stop(audioCtx.currentTime + 0.5);
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
+                gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                oscillator.start();
+                gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.5);
+                oscillator.stop(audioCtx.currentTime + 0.5);
+            } catch (e) { console.log("Audio block by browser"); }
         }
 
         window.onload = function() {
@@ -121,14 +136,20 @@
         }
 
         function login() {
-            user.name = document.getElementById('nickname').value;
-            user.email = document.getElementById('email').value;
-            if(!user.name || !user.email) return alert('กรุณากรอกข้อมูลให้ครบ');
+            const name = document.getElementById('nickname').value;
+            const email = document.getElementById('email').value;
+            if(!name || !email) return alert('กรุณากรอกข้อมูลให้ครบ');
+            user = { name, email };
             localStorage.setItem('task_school_user', JSON.stringify(user));
             showDashboard();
         }
 
         function showDashboard() {
+            if (!user.email) {
+                const saved = localStorage.getItem('task_school_user');
+                if (saved) user = JSON.parse(saved);
+                else return logout();
+            }
             document.getElementById('user-name').innerText = user.name;
             document.getElementById('login-screen').classList.add('hidden');
             document.getElementById('dashboard').classList.remove('hidden');
@@ -136,7 +157,6 @@
         }
 
         function logout() {
-            if(!confirm('ต้องการออกจากระบบ?')) return;
             localStorage.removeItem('task_school_user');
             location.reload();
         }
@@ -159,7 +179,6 @@
                 const displayDateTime = dateObj.toLocaleDateString('th-TH', { 
                     year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
                 });
-
                 list.innerHTML += `
                 <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm relative note-card ${n.is_done ? 'is-done' : ''}">
                     <div class="flex items-start gap-4">
@@ -174,7 +193,7 @@
                             <div class="dropdown-content">
                                 ${isDeleted ? 
                                     `<button onclick="restoreNote(${n.id})" class="w-full text-left p-3 text-sm font-bold text-blue-500">กู้คืน</button>` : 
-                                    `<button onclick="editNote(${JSON.stringify(n).replace(/"/g, '&quot;')})" class="w-full text-left p-3 text-sm font-bold text-gray-700 border-b">แก้ไข</button>
+                                    `<button onclick='editNote(${JSON.stringify(n)})' class="w-full text-left p-3 text-sm font-bold text-gray-700 border-b">แก้ไข</button>
                                      <button onclick="moveToTrash(${n.id})" class="w-full text-left p-3 text-sm font-bold text-red-500">ลบโน้ต</button>`
                                 }
                             </div>
@@ -185,6 +204,9 @@
         }
 
         function openModal() {
+            const guide = document.getElementById('guide-tooltip');
+            if(guide) guide.classList.add('hidden'); // ซ่อนคำแนะนำทันทีเมื่อเริ่มกดเพิ่มงาน
+
             document.getElementById('modal').classList.remove('hidden');
             document.getElementById('modal-title').innerText = 'จดบันทึกงาน';
             document.getElementById('edit-id').value = '';
@@ -217,7 +239,7 @@
             const res = id ? await supabaseClient.from('note').update(payload).eq('id', id) : await supabaseClient.from('note').insert([payload]);
             
             if(!res.error) {
-                playNotificationSound(); // ส่งเสียงเมื่อบันทึกสำเร็จ
+                playNotificationSound();
                 
                 const dueDate = new Date(fullDateTime);
                 const today = new Date();
@@ -234,7 +256,6 @@
                         to_email: user.email
                     }).then(() => {
                         showToast(`แจ้งเตือน ${daysLeft} วัน ส่งเมลแล้ว!`);
-                        // เล่นเสียงอีกครั้งเพื่อเน้นว่าส่งเมลสำเร็จ
                         setTimeout(playNotificationSound, 300); 
                     });
                 } else {
