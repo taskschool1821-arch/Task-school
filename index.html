@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task School - บันทึกการเรียน</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    <script type="text/javascript">
+       (function(){ emailjs.init("Isihs3VZwTT1xNymB"); })();
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap');
+        body { font-family: 'Sarabun', sans-serif; background-color: #f8fafc; }
+        .hidden { display: none; }
+        .is-done { opacity: 0.5; text-decoration: line-through; }
+        .note-card { transition: all 0.2s; }
+        .dropdown-content { display: none; position: absolute; right: 0; top: 100%; background: white; border: 1px solid #ddd; border-radius: 12px; z-index: 50; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 120px; }
+        .dropdown:focus-within .dropdown-content { display: block; }
+        #toast { visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center; border-radius: 15px; padding: 16px; position: fixed; z-index: 200; left: 50%; bottom: 30px; transform: translateX(-50%); }
+        #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
+        @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
+        @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
+    </style>
+</head>
+<body>
+
+    <div id="toast">แจ้งเตือนสำเร็จ!</div>
+
+    <div id="login-screen" class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white p-8 rounded-3xl shadow-xl w-full max-w-sm border border-blue-50">
+            <h1 class="text-3xl font-bold text-center mb-8 text-blue-600">Task School</h1>
+            <input type="text" id="nickname" placeholder="Name" class="w-full p-4 mb-4 border rounded-2xl outline-none focus:ring-2 focus:ring-blue-500">
+            <input type="email" id="email" placeholder="Email address" class="w-full p-4 mb-8 border rounded-2xl outline-none focus:ring-2 focus:ring-blue-500">
+            <button onclick="login()" class="w-full bg-blue-600 text-white p-4 rounded-2xl font-bold shadow-lg">เข้าสู่ระบบ</button>
+        </div>
+    </div>
+
+    <div id="dashboard" class="hidden min-h-screen pb-24">
+        <nav class="bg-white p-5 border-b sticky top-0 z-40 shadow-sm">
+            <div class="max-w-4xl mx-auto flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-blue-600">บันทึกของ <span id="user-name" class="text-gray-800"></span></h2>
+                <button onclick="logout()" class="text-gray-400 text-xs font-bold uppercase tracking-widest">Logout</button>
+            </div>
+            <div class="max-w-4xl mx-auto flex gap-3 overflow-x-auto">
+                <button id="btn-all" onclick="changeView('all')" class="px-5 py-2 rounded-full bg-blue-600 text-white text-sm font-bold shadow-md">โน้ต</button>
+                <button id="btn-trash" onclick="changeView('trash')" class="px-5 py-2 rounded-full bg-gray-100 text-gray-500 text-sm font-bold">เพิ่งลบไป</button>
+            </div>
+        </nav>
+        <div class="max-w-4xl mx-auto p-4">
+            <div id="note-list" class="flex flex-col gap-4"></div>
+        </div>
+        <button onclick="openModal()" class="fixed bottom-8 right-8 w-16 h-16 bg-blue-600 text-white rounded-full text-4xl shadow-2xl flex items-center justify-center transition hover:scale-110 z-50">+</button>
+    </div>
+
+    <div id="modal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-[100] backdrop-blur-sm">
+        <div class="bg-white w-full max-w-md p-6 rounded-3xl shadow-2xl">
+            <h3 id="modal-title" class="text-xl font-bold mb-6">จดบันทึกงาน</h3>
+            <input type="hidden" id="edit-id">
+            <input type="text" id="title" placeholder="หัวข้อ" class="w-full p-4 mb-3 border border-gray-100 bg-gray-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold">
+            <textarea id="content" placeholder="รายละเอียด" class="w-full h-32 p-4 mb-3 border border-gray-100 bg-gray-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
+            
+            <div class="grid grid-cols-2 gap-3 mb-8">
+                <div>
+                    <label class="block mb-2 text-sm font-bold text-gray-500 ml-2">📅 วันที่ส่ง</label>
+                    <input type="date" id="date" class="w-full p-4 border border-gray-100 bg-gray-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block mb-2 text-sm font-bold text-gray-500 ml-2">⏰ เวลา</label>
+                    <input type="time" id="time" class="w-full p-4 border border-gray-100 bg-gray-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+            </div>
+            
+            <div class="flex gap-4">
+                <button onclick="closeModal()" class="flex-1 p-4 text-gray-400 font-bold">ยกเลิก</button>
+                <button onclick="saveNote()" id="btn-save" class="flex-1 p-4 bg-blue-600 text-white rounded-2xl font-bold shadow-lg">บันทึก</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const _URL = 'https://vapsoypudgmcxpayrtug.supabase.co';
+        const _KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZhcHNveXB1ZGdtY3hwYXlydHVnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkwNDMzOTUsImV4cCI6MjA4NDYxOTM5NX0.AnD5YcWiDifHVARsCejbyxyzs_yggjE3o43UHxeQ5GM';
+        const supabaseClient = supabase.createClient(_URL, _KEY);
+
+        let user = { name: '', email: '' };
+        let currentView = 'all';
+
+        // ฟังก์ชันสร้างเสียงแจ้งเตือน (Beep Sound)
+        function playNotificationSound() {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            oscillator.type = 'sine'; // เสียงนุ่มๆ
+            oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // ความถี่เสียง
+            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime); // ความดัง
+
+            oscillator.start();
+            gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.5);
+            oscillator.stop(audioCtx.currentTime + 0.5);
+        }
+
+        window.onload = function() {
+            const savedUser = localStorage.getItem('task_school_user');
+            if (savedUser) {
+                user = JSON.parse(savedUser);
+                showDashboard();
+            }
+        };
+
+        function showToast(msg) {
+            const toast = document.getElementById("toast");
+            toast.innerText = msg;
+            toast.className = "show";
+            setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3000);
+        }
+
+        function login() {
+            user.name = document.getElementById('nickname').value;
+            user.email = document.getElementById('email').value;
+            if(!user.name || !user.email) return alert('กรุณากรอกข้อมูลให้ครบ');
+            localStorage.setItem('task_school_user', JSON.stringify(user));
+            showDashboard();
+        }
+
+        function showDashboard() {
+            document.getElementById('user-name').innerText = user.name;
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('dashboard').classList.remove('hidden');
+            fetchNotes();
+        }
+
+        function logout() {
+            if(!confirm('ต้องการออกจากระบบ?')) return;
+            localStorage.removeItem('task_school_user');
+            location.reload();
+        }
+
+        function changeView(view) {
+            currentView = view;
+            document.getElementById('btn-all').className = view === 'all' ? 'px-5 py-2 rounded-full bg-blue-600 text-white text-sm font-bold shadow-md' : 'px-5 py-2 rounded-full bg-gray-100 text-gray-500 text-sm font-bold';
+            document.getElementById('btn-trash').className = view === 'trash' ? 'px-5 py-2 rounded-full bg-blue-600 text-white text-sm font-bold shadow-md' : 'px-5 py-2 rounded-full bg-gray-100 text-gray-500 text-sm font-bold';
+            fetchNotes();
+        }
+
+        async function fetchNotes() {
+            const isDeleted = currentView === 'trash';
+            const { data } = await supabaseClient.from('note').select('*').eq('email', user.email).eq('is_deleted', isDeleted).order('due_date', {ascending: true});
+            const list = document.getElementById('note-list');
+            list.innerHTML = (data && data.length) ? '' : '<div class="text-center py-20 text-gray-300">ไม่มีข้อมูล</div>';
+            
+            if(data) data.forEach(n => {
+                const dateObj = new Date(n.due_date);
+                const displayDateTime = dateObj.toLocaleDateString('th-TH', { 
+                    year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
+                });
+
+                list.innerHTML += `
+                <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm relative note-card ${n.is_done ? 'is-done' : ''}">
+                    <div class="flex items-start gap-4">
+                        <input type="checkbox" ${n.is_done ? 'checked' : ''} onchange="toggleDone(${n.id}, ${n.is_done})" class="mt-1.5 w-6 h-6 rounded-full border-gray-300 text-blue-600 focus:ring-blue-500">
+                        <div class="flex-1">
+                            <h4 class="font-bold text-xl mb-2 text-gray-800">${n.title}</h4>
+                            <p class="text-gray-600 text-sm mb-6 whitespace-pre-wrap leading-relaxed">${n.content || ''}</p>
+                            <div class="text-xs font-bold text-blue-500 bg-blue-50/50 inline-block px-4 py-1.5 rounded-full">📅 กำหนดส่ง: ${displayDateTime}</div>
+                        </div>
+                        <div class="dropdown relative">
+                            <button class="p-2 text-gray-300 hover:text-gray-600 text-2xl">⋮</button>
+                            <div class="dropdown-content">
+                                ${isDeleted ? 
+                                    `<button onclick="restoreNote(${n.id})" class="w-full text-left p-3 text-sm font-bold text-blue-500">กู้คืน</button>` : 
+                                    `<button onclick="editNote(${JSON.stringify(n).replace(/"/g, '&quot;')})" class="w-full text-left p-3 text-sm font-bold text-gray-700 border-b">แก้ไข</button>
+                                     <button onclick="moveToTrash(${n.id})" class="w-full text-left p-3 text-sm font-bold text-red-500">ลบโน้ต</button>`
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            });
+        }
+
+        function openModal() {
+            document.getElementById('modal').classList.remove('hidden');
+            document.getElementById('modal-title').innerText = 'จดบันทึกงาน';
+            document.getElementById('edit-id').value = '';
+            document.getElementById('title').value = '';
+            document.getElementById('content').value = '';
+            document.getElementById('date').value = '';
+            document.getElementById('time').value = '00:00';
+        }
+
+        function closeModal() { document.getElementById('modal').classList.add('hidden'); }
+
+        async function saveNote() {
+            const id = document.getElementById('edit-id').value;
+            const title = document.getElementById('title').value;
+            const content = document.getElementById('content').value;
+            const date = document.getElementById('date').value;
+            const time = document.getElementById('time').value || "00:00";
+
+            if(!title || !date) return alert('กรุณาระบุหัวข้อและวันที่');
+            const fullDateTime = `${date}T${time}:00`;
+
+            const payload = {
+                name: user.name, 
+                email: user.email,
+                title: title,
+                content: content,
+                due_date: fullDateTime
+            };
+            
+            const res = id ? await supabaseClient.from('note').update(payload).eq('id', id) : await supabaseClient.from('note').insert([payload]);
+            
+            if(!res.error) {
+                playNotificationSound(); // ส่งเสียงเมื่อบันทึกสำเร็จ
+                
+                const dueDate = new Date(fullDateTime);
+                const today = new Date();
+                const timeDiff = dueDate.getTime() - today.getTime();
+                const daysLeft = Math.ceil(timeDiff / (1000 * 3600 * 24));
+
+                const alertDays = [5, 3, 2, 1, 0];
+                if (alertDays.includes(daysLeft)) {
+                    emailjs.send("service_xpfnqyd", "template_9qrfhh6", {
+                        nickname: user.name,
+                        title: title,
+                        due_date: new Date(fullDateTime).toLocaleString('th-TH'),
+                        days_left: daysLeft,
+                        to_email: user.email
+                    }).then(() => {
+                        showToast(`แจ้งเตือน ${daysLeft} วัน ส่งเมลแล้ว!`);
+                        // เล่นเสียงอีกครั้งเพื่อเน้นว่าส่งเมลสำเร็จ
+                        setTimeout(playNotificationSound, 300); 
+                    });
+                } else {
+                    showToast("บันทึกเรียบร้อย!");
+                }
+                closeModal(); 
+                fetchNotes(); 
+            }
+        }
+
+        async function toggleDone(id, status) {
+            await supabaseClient.from('note').update({ is_done: !status }).eq('id', id);
+            fetchNotes();
+        }
+
+        async function moveToTrash(id) {
+            if(!confirm('ย้ายไปถังขยะ?')) return;
+            await supabaseClient.from('note').update({ is_deleted: true }).eq('id', id);
+            fetchNotes();
+        }
+
+        async function restoreNote(id) {
+            await supabaseClient.from('note').update({ is_deleted: false }).eq('id', id);
+            fetchNotes();
+        }
+
+        function editNote(n) {
+            document.getElementById('modal').classList.remove('hidden');
+            document.getElementById('modal-title').innerText = 'แก้ไขบันทึก';
+            document.getElementById('edit-id').value = n.id;
+            document.getElementById('title').value = n.title;
+            document.getElementById('content').value = n.content;
+            
+            const dt = new Date(n.due_date);
+            const yyyy = dt.getFullYear();
+            const mm = String(dt.getMonth() + 1).padStart(2, '0');
+            const dd = String(dt.getDate()).padStart(2, '0');
+            const hh = String(dt.getHours()).padStart(2, '0');
+            const min = String(dt.getMinutes()).padStart(2, '0');
+            
+            document.getElementById('date').value = `${yyyy}-${mm}-${dd}`;
+            document.getElementById('time').value = `${hh}:${min}`;
+        }
+    </script>
+</body>
+</html>
