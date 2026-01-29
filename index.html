@@ -55,11 +55,6 @@
             <div id="note-list" class="flex flex-col gap-4"></div>
         </div>
 
-        <div id="guide-tooltip" class="fixed bottom-28 right-6 z-50 flex flex-col items-center">
-            <div class="bg-blue-600/80 text-white text-xs py-2 px-4 rounded-full shadow-lg guide-text backdrop-blur-sm">กด + เพื่อเพิ่มงาน</div>
-            <div class="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] border-t-blue-600/80"></div>
-        </div>
-
         <button onclick="openModal()" class="fixed bottom-8 right-8 w-16 h-16 bg-blue-600 text-white rounded-full text-4xl shadow-2xl flex items-center justify-center transition hover:scale-110 z-50">+</button>
     </div>
 
@@ -159,10 +154,13 @@
             list.innerHTML = (data && data.length) ? '' : '<div class="text-center py-20 text-gray-300">ไม่มีข้อมูล</div>';
             
             if(data) data.forEach(n => {
-                const dateObj = new Date(n.due_date);
-                const displayDateTime = dateObj.toLocaleDateString('th-TH', { 
-                    year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
-                });
+                // แสดงเวลาจาก String ใน DB ตรงๆ ไม่ใช้ new Date() เพื่อเลี่ยงบัค 07:00
+                const rawDate = n.due_date.replace('T', ' ');
+                const [d, t] = rawDate.split(' ');
+                const [y, m, day] = d.split('-');
+                const displayTime = t ? t.substring(0, 5) : "00:00";
+                const displayDateTime = `${day}/${m}/${parseInt(y)+543} ${displayTime}`;
+
                 list.innerHTML += `
                 <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm relative note-card ${n.is_done ? 'is-done' : ''}">
                     <div class="flex items-start gap-4">
@@ -186,7 +184,6 @@
         }
 
         function openModal() {
-            if(document.getElementById('guide-tooltip')) document.getElementById('guide-tooltip').classList.add('hidden');
             document.getElementById('modal').classList.remove('hidden');
             document.getElementById('modal-title').innerText = "จดบันทึกงาน";
             document.getElementById('edit-id').value = '';
@@ -207,10 +204,8 @@
 
             if(!title || !date) return alert('กรุณาระบุหัวข้อและวันที่');
             
-            // แก้ไขปัญหาเวลา 07:00 โดยการระบุ Timezone +07:00 (เวลาไทย)
-            const fullDateTime = `${date}T${time}:00+07:00`; 
-            const dueDate = new Date(fullDateTime);
-            const today = new Date();
+            // ส่งเป็น String Format ที่ Supabase timestamp เข้าใจ (YYYY-MM-DD HH:mm:ss)
+            const fullDateTime = `${date} ${time}:00`; 
 
             const payload = {
                 name: user.name, 
@@ -225,25 +220,23 @@
             if(!res.error) {
                 playNotificationSound();
                 
-                const timeDiffMs = dueDate - today;
+                // สำหรับ EmailJS ให้ใช้ Date Object เพื่อคำนวณเวลาที่เหลือ
+                const dueDateObj = new Date(`${date}T${time}:00`);
+                const today = new Date();
+                const timeDiffMs = dueDateObj - today;
                 const hoursLeft = Math.floor(timeDiffMs / (1000 * 60 * 60));
                 const daysLeft = Math.floor(hoursLeft / 24);
 
-                let timeMsg = "";
-                if (hoursLeft < 0) timeMsg = "เลยกำหนดส่งแล้ว";
-                else if (hoursLeft < 24) timeMsg = `เหลือเวลาอีก ${hoursLeft} ชั่วโมง`;
-                else timeMsg = `เหลือเวลาอีก ${daysLeft} วัน`;
+                let timeMsg = hoursLeft < 0 ? "เลยกำหนดส่งแล้ว" : (hoursLeft < 24 ? `เหลือเวลาอีก ${hoursLeft} ชั่วโมง` : `เหลือเวลาอีก ${daysLeft} วัน`);
 
                 if (hoursLeft >= 0 && daysLeft <= 5) {
                     emailjs.send("service_xpfnqyd", "template_9qrfhh6", {
                         nickname: user.name,
                         title: title,
-                        due_date: dueDate.toLocaleString('th-TH'),
+                        due_date: `${date} ${time}`,
                         days_left: timeMsg,
                         to_email: user.email
-                    }).then(() => {
-                        showToast(`แจ้งเตือน: ${timeMsg} ส่งเมลแล้ว!`);
-                    });
+                    }).then(() => showToast(`แจ้งเตือน: ${timeMsg} ส่งเมลแล้ว!`));
                 } else {
                     showToast("บันทึกเรียบร้อย!");
                 }
@@ -274,11 +267,10 @@
             document.getElementById('title').value = n.title;
             document.getElementById('content').value = n.content;
             
-            const dt = new Date(n.due_date);
-            // แปลงวันที่เข้าช่อง Input Date
-            document.getElementById('date').value = dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
-            // แปลงเวลาเข้าช่อง Input Time ให้ตรงตามเขตเวลาเครื่อง
-            document.getElementById('time').value = dt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+            // แยก String วันที่และเวลามาใส่ Input ตรงๆ ไม่ผ่าน Date Object เพื่อเลี่ยงบัค
+            const parts = n.due_date.replace('T', ' ').split(' ');
+            document.getElementById('date').value = parts[0];
+            document.getElementById('time').value = parts[1] ? parts[1].substring(0, 5) : "00:00";
         }
     </script>
 </body>
