@@ -188,6 +188,7 @@
         function openModal() {
             if(document.getElementById('guide-tooltip')) document.getElementById('guide-tooltip').classList.add('hidden');
             document.getElementById('modal').classList.remove('hidden');
+            document.getElementById('modal-title').innerText = "จดบันทึกงาน";
             document.getElementById('edit-id').value = '';
             document.getElementById('title').value = '';
             document.getElementById('content').value = '';
@@ -206,8 +207,8 @@
 
             if(!title || !date) return alert('กรุณาระบุหัวข้อและวันที่');
             
-            // สร้างวันเวลาแบบไม่พึ่งพา Timezone ท้องถิ่น เพื่อส่งไป Supabase
-            const fullDateTime = `${date}T${time}:00`; 
+            // แก้ไขปัญหาเวลา 07:00 โดยการระบุ Timezone +07:00 (เวลาไทย)
+            const fullDateTime = `${date}T${time}:00+07:00`; 
             const dueDate = new Date(fullDateTime);
             const today = new Date();
 
@@ -238,7 +239,7 @@
                         nickname: user.name,
                         title: title,
                         due_date: dueDate.toLocaleString('th-TH'),
-                        days_left: timeMsg, // ส่งข้อความสำเร็จรูปไปให้ EmailJS
+                        days_left: timeMsg,
                         to_email: user.email
                     }).then(() => {
                         showToast(`แจ้งเตือน: ${timeMsg} ส่งเมลแล้ว!`);
@@ -268,12 +269,16 @@
 
         function editNote(n) {
             document.getElementById('modal').classList.remove('hidden');
+            document.getElementById('modal-title').innerText = "แก้ไขบันทึกงาน";
             document.getElementById('edit-id').value = n.id;
             document.getElementById('title').value = n.title;
             document.getElementById('content').value = n.content;
+            
             const dt = new Date(n.due_date);
-            document.getElementById('date').value = dt.toISOString().split('T')[0];
-            document.getElementById('time').value = dt.toTimeString().substring(0,5);
+            // แปลงวันที่เข้าช่อง Input Date
+            document.getElementById('date').value = dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
+            // แปลงเวลาเข้าช่อง Input Time ให้ตรงตามเขตเวลาเครื่อง
+            document.getElementById('time').value = dt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
         }
     </script>
 </body>
