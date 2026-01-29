@@ -22,8 +22,13 @@
         #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
         @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
         @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
-        .guide-text { animation: bounce 2s infinite; }
-        @keyframes bounce { 0%, 20%, 50%, 80%, 100% {transform: translateY(0);} 40% {transform: translateY(-10px);} 60% {transform: translateY(-5px);} }
+        
+        .guide-text { animation: bounceSide 2s infinite; }
+        @keyframes bounceSide {
+            0%, 20%, 50%, 80%, 100% { transform: translateX(0); }
+            40% { transform: translateX(-10px); }
+            60% { transform: translateX(-5px); }
+        }
     </style>
 </head>
 <body>
@@ -55,10 +60,13 @@
             <div id="note-list" class="flex flex-col gap-4"></div>
         </div>
 
-        <button onclick="openModal()" class="fixed bottom-8 right-8 w-16 h-16 bg-blue-600 text-white rounded-full text-4xl shadow-2xl flex items-center justify-center transition hover:scale-110 z-50">+</button>
+        <div class="fixed bottom-8 right-8 flex items-center gap-3 z-[110]">
+            <span class="guide-text text-gray-400 text-sm font-bold bg-white/80 px-3 py-1 rounded-full shadow-sm border border-gray-100">กด + เพื่อเพิ่มข้อมูล</span>
+            <button onclick="openModal()" class="w-16 h-16 bg-blue-600 text-white rounded-full text-4xl shadow-2xl flex items-center justify-center transition hover:scale-110 active:scale-95">+</button>
+        </div>
     </div>
 
-    <div id="modal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-[100] backdrop-blur-sm">
+    <div id="modal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-[200] backdrop-blur-sm">
         <div class="bg-white w-full max-w-md p-6 rounded-3xl shadow-2xl">
             <h3 id="modal-title" class="text-xl font-bold mb-6">จดบันทึกงาน</h3>
             <input type="hidden" id="edit-id">
@@ -149,12 +157,18 @@
 
         async function fetchNotes() {
             const isDeleted = currentView === 'trash';
-            const { data } = await supabaseClient.from('note').select('*').eq('email', user.email).eq('is_deleted', isDeleted).order('due_date', {ascending: true});
+            const { data } = await supabaseClient
+                .from('note')
+                .select('*')
+                .eq('email', user.email)
+                .eq('is_deleted', isDeleted)
+                .order('is_pinned', { ascending: false })
+                .order('due_date', { ascending: true });
+
             const list = document.getElementById('note-list');
             list.innerHTML = (data && data.length) ? '' : '<div class="text-center py-20 text-gray-300">ไม่มีข้อมูล</div>';
             
             if(data) data.forEach(n => {
-                // แสดงเวลาจาก String ใน DB ตรงๆ ไม่ใช้ new Date() เพื่อเลี่ยงบัค 07:00
                 const rawDate = n.due_date.replace('T', ' ');
                 const [d, t] = rawDate.split(' ');
                 const [y, m, day] = d.split('-');
@@ -162,7 +176,8 @@
                 const displayDateTime = `${day}/${m}/${parseInt(y)+543} ${displayTime}`;
 
                 list.innerHTML += `
-                <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm relative note-card ${n.is_done ? 'is-done' : ''}">
+                <div class="bg-white p-6 rounded-3xl border ${n.is_pinned ? 'border-blue-300 ring-2 ring-blue-50' : 'border-gray-100'} shadow-sm relative note-card ${n.is_done ? 'is-done' : ''}">
+                    ${n.is_pinned ? '<span class="absolute -top-2 -left-2 bg-blue-500 text-white text-[10px] px-2 py-1 rounded-lg font-bold">PINNED</span>' : ''}
                     <div class="flex items-start gap-4">
                         <input type="checkbox" ${n.is_done ? 'checked' : ''} onchange="toggleDone(${n.id}, ${n.is_done})" class="mt-1.5 w-6 h-6 rounded-full border-gray-300 text-blue-600 focus:ring-blue-500">
                         <div class="flex-1">
@@ -174,13 +189,68 @@
                             <button class="p-2 text-gray-300 hover:text-gray-600 text-2xl">⋮</button>
                             <div class="dropdown-content">
                                 ${isDeleted ? `<button onclick="restoreNote(${n.id})" class="w-full text-left p-3 text-sm font-bold text-blue-500">กู้คืน</button>` : 
-                                `<button onclick='editNote(${JSON.stringify(n)})' class="w-full text-left p-3 text-sm font-bold text-gray-700 border-b">แก้ไข</button>
+                                `<button onclick="togglePin(${n.id}, ${n.is_pinned})" class="w-full text-left p-3 text-sm font-bold text-blue-600 border-b">${n.is_pinned ? 'เลิกปักหมุด' : 'ปักหมุด'}</button>
+                                 <button onclick='editNote(${JSON.stringify(n)})' class="w-full text-left p-3 text-sm font-bold text-gray-700 border-b">แก้ไข</button>
                                  <button onclick="moveToTrash(${n.id})" class="w-full text-left p-3 text-sm font-bold text-red-500">ลบ</button>`}
                             </div>
                         </div>
                     </div>
                 </div>`;
             });
+        }
+
+        async function saveNote() {
+            const id = document.getElementById('edit-id').value;
+            const title = document.getElementById('title').value;
+            const content = document.getElementById('content').value;
+            const date = document.getElementById('date').value;
+            const time = document.getElementById('time').value || "00:00";
+
+            if(!title || !date) return alert('กรุณาระบุหัวข้อและวันที่');
+            const fullDateTime = `${date} ${time}:00`; 
+
+            // เพิ่มคอลัมน์สำหรับการเช็คแจ้งเตือนครบทุกช่วงเวลา
+            const payload = {
+                name: user.name, 
+                email: user.email,
+                title: title,
+                content: content,
+                due_date: fullDateTime,
+                sent_5d: false, // แจ้งเตือน 5 วัน
+                sent_3d: false, // แจ้งเตือน 3 วัน
+                sent_1d: false, // แจ้งเตือน 1 วัน
+                sent_3h: false, // แจ้งเตือน 3 ชม.
+                sent_1h: false  // แจ้งเตือน 1 ชม.
+            };
+            
+            const res = id ? await supabaseClient.from('note').update(payload).eq('id', id) : await supabaseClient.from('note').insert([payload]);
+            
+            if(!res.error) {
+                playNotificationSound();
+                showToast("บันทึกเรียบร้อย!");
+                closeModal(); fetchNotes(); 
+            }
+        }
+
+        async function togglePin(id, status) {
+            await supabaseClient.from('note').update({ is_pinned: !status }).eq('id', id);
+            fetchNotes();
+        }
+
+        async function toggleDone(id, status) {
+            await supabaseClient.from('note').update({ is_done: !status }).eq('id', id);
+            fetchNotes();
+        }
+
+        async function moveToTrash(id) {
+            if(!confirm('ย้ายไปถังขยะ?')) return;
+            await supabaseClient.from('note').update({ is_deleted: true, is_pinned: false }).eq('id', id);
+            fetchNotes();
+        }
+
+        async function restoreNote(id) {
+            await supabaseClient.from('note').update({ is_deleted: false }).eq('id', id);
+            fetchNotes();
         }
 
         function openModal() {
@@ -195,79 +265,12 @@
 
         function closeModal() { document.getElementById('modal').classList.add('hidden'); }
 
-        async function saveNote() {
-            const id = document.getElementById('edit-id').value;
-            const title = document.getElementById('title').value;
-            const content = document.getElementById('content').value;
-            const date = document.getElementById('date').value;
-            const time = document.getElementById('time').value || "00:00";
-
-            if(!title || !date) return alert('กรุณาระบุหัวข้อและวันที่');
-            
-            // ส่งเป็น String Format ที่ Supabase timestamp เข้าใจ (YYYY-MM-DD HH:mm:ss)
-            const fullDateTime = `${date} ${time}:00`; 
-
-            const payload = {
-                name: user.name, 
-                email: user.email,
-                title: title,
-                content: content,
-                due_date: fullDateTime
-            };
-            
-            const res = id ? await supabaseClient.from('note').update(payload).eq('id', id) : await supabaseClient.from('note').insert([payload]);
-            
-            if(!res.error) {
-                playNotificationSound();
-                
-                // สำหรับ EmailJS ให้ใช้ Date Object เพื่อคำนวณเวลาที่เหลือ
-                const dueDateObj = new Date(`${date}T${time}:00`);
-                const today = new Date();
-                const timeDiffMs = dueDateObj - today;
-                const hoursLeft = Math.floor(timeDiffMs / (1000 * 60 * 60));
-                const daysLeft = Math.floor(hoursLeft / 24);
-
-                let timeMsg = hoursLeft < 0 ? "เลยกำหนดส่งแล้ว" : (hoursLeft < 24 ? `เหลือเวลาอีก ${hoursLeft} ชั่วโมง` : `เหลือเวลาอีก ${daysLeft} วัน`);
-
-                if (hoursLeft >= 0 && daysLeft <= 5) {
-                    emailjs.send("service_xpfnqyd", "template_9qrfhh6", {
-                        nickname: user.name,
-                        title: title,
-                        due_date: `${date} ${time}`,
-                        days_left: timeMsg,
-                        to_email: user.email
-                    }).then(() => showToast(`แจ้งเตือน: ${timeMsg} ส่งเมลแล้ว!`));
-                } else {
-                    showToast("บันทึกเรียบร้อย!");
-                }
-                closeModal(); fetchNotes(); 
-            }
-        }
-
-        async function toggleDone(id, status) {
-            await supabaseClient.from('note').update({ is_done: !status }).eq('id', id);
-            fetchNotes();
-        }
-
-        async function moveToTrash(id) {
-            if(!confirm('ย้ายไปถังขยะ?')) return;
-            await supabaseClient.from('note').update({ is_deleted: true }).eq('id', id);
-            fetchNotes();
-        }
-
-        async function restoreNote(id) {
-            await supabaseClient.from('note').update({ is_deleted: false }).eq('id', id);
-            fetchNotes();
-        }
-
         function editNote(n) {
             document.getElementById('modal').classList.remove('hidden');
             document.getElementById('modal-title').innerText = "แก้ไขบันทึกงาน";
             document.getElementById('edit-id').value = n.id;
             document.getElementById('title').value = n.title;
             document.getElementById('content').value = n.content;
-            
-            // แยก String วันที่และเวลามาใส่ Input ตรงๆ ไม่ผ่าน Date Object เพื่อเลี่ยงบัค
             const parts = n.due_date.replace('T', ' ').split(' ');
             document.getElementById('date').value = parts[0];
             document.getElementById('time').value = parts[1] ? parts[1].substring(0, 5) : "00:00";
