@@ -9,11 +9,10 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap');
         
-        /* ปรับโทนสีหลัก */
         :root {
-            --primary-orange: #d97706; /* ส้มตุ่น */
-            --bg-cream: #fffaf5; /* พื้นหลังครีมนวล */
-            --accent-yellow: #f59e0b; /* เหลืองมัสตาร์ด */
+            --primary-orange: #d97706;
+            --bg-cream: #fffaf5;
+            --accent-yellow: #f59e0b;
             --soft-border: #f3e8d2;
         }
 
@@ -26,18 +25,21 @@
         .hidden { display: none; }
         .is-done { opacity: 0.5; text-decoration: line-through; filter: grayscale(50%); }
         
-        /* ปรับแต่งปุ่มและ Card */
         .note-card { 
             transition: all 0.3s ease; 
             border: 1px solid var(--soft-border);
             background: #ffffff;
+            position: relative; /* เพิ่มเพื่อให้ z-index ทำงาน */
         }
         .note-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(217, 119, 6, 0.1); }
 
+        /* แก้ไขปัญหาเมนูโดนบังโดยการเพิ่ม z-index เมื่อมีการคลิกใช้งาน */
+        .dropdown:focus-within { z-index: 100; position: relative; }
+        
         .dropdown-content { 
             display: none; position: absolute; right: 0; top: 100%; 
             background: white; border: 1px solid var(--soft-border); 
-            border-radius: 12px; z-index: 50; box-shadow: 0 4px 12px rgba(0,0,0,0.05); width: 120px; 
+            border-radius: 12px; z-index: 50; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 120px; 
         }
         .dropdown:focus-within .dropdown-content { display: block; }
 
@@ -58,7 +60,6 @@
             60% { transform: translateX(-5px); }
         }
 
-        /* ปรับแต่ง Scrollbar ให้เข้ากับโทนสี */
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: var(--bg-cream); }
         ::-webkit-scrollbar-thumb { background: #e5d5bc; border-radius: 10px; }
@@ -205,7 +206,7 @@
                         <div class="flex-1">
                             <h4 class="font-bold text-lg mb-1 text-[#4b2c20]">${n.title}</h4>
                             <p class="text-[#6b7280] text-sm mb-4 whitespace-pre-wrap leading-relaxed">${n.content || ''}</p>
-                            <div class="text-[11px] font-bold text-[#b45309] bg-[#fef3c7] inline-block px-4 py-1.5 rounded-full">🔔 กำหนดส่ง: ${displayDateTime}</div>
+                            <div class="text-[11px] font-bold text-[#b45309] bg-[#fef3c7] inline-block px-4 py-1.5 rounded-full">กำหนดส่ง: ${displayDateTime}</div>
                         </div>
                         <div class="dropdown relative">
                             <button class="p-2 text-[#d1d5db] hover:text-[#d97706] text-xl">⋮</button>
@@ -228,7 +229,7 @@
             const date = document.getElementById('date').value;
             const time = document.getElementById('time').value || "00:00";
 
-            if(!title || !date) return alert('กรุณาระบุหัวข้อและวันที่ส่งงาน');
+            if(!title || !date) return alert('ระบุหัวข้อและวันที่ส่งงาน');
             const fullDateTime = `${date} ${time}:00`; 
 
             const payload = {
@@ -244,7 +245,7 @@
             const res = id ? await supabaseClient.from('note').update(payload).eq('id', id) : await supabaseClient.from('note').insert([payload]);
             
             if(!res.error) {
-                showToast("บันทึกงานเรียบร้อย ✨");
+                showToast("บันทึกงานเรียบร้อย");
                 closeModal(); fetchNotes(); 
             }
         }
@@ -295,4 +296,3 @@
     </script>
 </body>
 </html>
-
