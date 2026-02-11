@@ -208,10 +208,9 @@
             const time = document.getElementById('time').value || "00:00";
             if(!title || !date) return alert('กรอกข้อมูลให้ครบ');
             
-            // ปรับตรงนี้: ส่ง nickname เข้าไปด้วยเพื่อใช้ในระบบส่งเมล
             const payload = { 
                 email: user.email, 
-                nickname: user.name, // ชื่อเล่นจาก Login
+                name: user.name, 
                 title: title, 
                 content: content, 
                 due_date: `${date}T${time}:00`, 
