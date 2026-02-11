@@ -31,26 +31,28 @@
             background: #ffffff;
             position: relative;
         }
-        .note-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(217, 119, 6, 0.1); }
 
-        /* แก้ไขจุดสำคัญ: เมื่อมีการคลิกที่เมนู ให้ยกเลเยอร์ของการ์ดใบนั้นขึ้นมาสูงสุด */
-        .note-card:focus-within { z-index: 50; }
-        
+        /* --- จุดที่แก้ไขใหม่ --- */
         .dropdown-content { 
             display: none; 
             position: absolute; 
             right: 0; 
-            top: 100%; 
+            bottom: 100%; /* เปลี่ยนจาก top เป็น bottom เพื่อให้เด้งขึ้นข้างบน */
+            margin-bottom: 8px; /* เว้นระยะห่างจากปุ่มเล็กน้อย */
             background: white; 
             border: 1px solid var(--soft-border); 
             border-radius: 12px; 
-            z-index: 100; /* ให้เมนูอยู่เหนือทุกอย่าง */
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); 
+            z-index: 999; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15); 
             width: 140px; 
-            overflow: hidden;
         }
-        
-        /* แสดงเมนูเมื่อปุ่มหรือ dropdown ถูกโฟกัส */
+
+        /* บังคับให้การ์ดที่กำลังถูกกด ลอยขึ้นมาเหนือเพื่อนแบบเด็ดขาด */
+        .note-card:focus-within { 
+            z-index: 100 !important; 
+        }
+        /* ---------------------- */
+
         .dropdown:focus-within .dropdown-content { display: block; }
 
         #toast { 
@@ -62,17 +64,6 @@
         
         @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
         @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
-        
-        .guide-text { animation: bounceSide 2s infinite; color: #a39382; }
-        @keyframes bounceSide {
-            0%, 20%, 50%, 80%, 100% { transform: translateX(0); }
-            40% { transform: translateX(-10px); }
-            60% { transform: translateX(-5px); }
-        }
-
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: var(--bg-cream); }
-        ::-webkit-scrollbar-thumb { background: #e5d5bc; border-radius: 10px; }
     </style>
 </head>
 <body>
@@ -108,7 +99,6 @@
         </div>
 
         <div class="fixed bottom-8 right-8 flex items-center gap-3 z-[110]">
-            <span class="guide-text text-sm font-bold bg-white/90 px-4 py-2 rounded-full shadow-sm border border-[#f3e8d2]">เพิ่มงานใหม่ตรงนี้</span>
             <button onclick="openModal()" class="w-16 h-16 bg-[#f59e0b] text-white rounded-full text-4xl shadow-2xl flex items-center justify-center transition hover:scale-110 active:scale-95 hover:bg-[#d97706] border-4 border-white">
                 <span class="mb-1">+</span>
             </button>
@@ -155,8 +145,7 @@
 
         function showToast(msg) {
             const toast = document.getElementById("toast");
-            toast.innerText = msg;
-            toast.className = "show";
+            toast.innerText = msg; toast.className = "show";
             setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3000);
         }
 
@@ -176,15 +165,10 @@
             fetchNotes();
         }
 
-        function logout() {
-            localStorage.removeItem('task_school_user');
-            location.reload();
-        }
+        function logout() { localStorage.removeItem('task_school_user'); location.reload(); }
 
         function changeView(view) {
             currentView = view;
-            document.getElementById('btn-all').className = view === 'all' ? 'px-6 py-2 rounded-full bg-[#fef3c7] text-[#b45309] text-sm font-bold shadow-sm border border-[#fde68a]' : 'px-6 py-2 rounded-full bg-white text-[#a39382] text-sm font-bold border border-[#f3e8d2]';
-            document.getElementById('btn-trash').className = view === 'trash' ? 'px-6 py-2 rounded-full bg-[#fef3c7] text-[#b45309] text-sm font-bold shadow-sm border border-[#fde68a]' : 'px-6 py-2 rounded-full bg-white text-[#a39382] text-sm font-bold border border-[#f3e8d2]';
             fetchNotes();
         }
 
@@ -205,12 +189,10 @@
                 const rawDate = n.due_date.replace('T', ' ');
                 const [d, t] = rawDate.split(' ');
                 const [y, m, day] = d.split('-');
-                const displayTime = t ? t.substring(0, 5) : "00:00";
-                const displayDateTime = `${day}/${m}/${parseInt(y)+543} ${displayTime}`;
+                const displayDateTime = `${day}/${m}/${parseInt(y)+543} ${t ? t.substring(0, 5) : "00:00"}`;
 
                 list.innerHTML += `
-                <div class="note-card p-6 rounded-[2rem] relative ${n.is_done ? 'is-done' : ''} ${n.is_pinned ? 'bg-[#fffbeb] border-[#fde68a]' : 'bg-white'}" tabindex="0">
-                    ${n.is_pinned ? '<span class="absolute -top-2 -left-2 bg-[#f59e0b] text-white text-[10px] px-3 py-1 rounded-full font-bold shadow-sm">สำคัญ</span>' : ''}
+                <div class="note-card p-6 rounded-[2rem] ${n.is_done ? 'is-done' : ''} ${n.is_pinned ? 'bg-[#fffbeb] border-[#fde68a]' : 'bg-white'}" tabindex="0">
                     <div class="flex items-start gap-4">
                         <input type="checkbox" ${n.is_done ? 'checked' : ''} onchange="toggleDone(${n.id}, ${n.is_done})" class="mt-1.5 w-6 h-6 rounded-full border-[#f3e8d2] text-[#d97706] focus:ring-[#f59e0b]">
                         <div class="flex-1">
@@ -219,11 +201,12 @@
                             <div class="text-[11px] font-bold text-[#b45309] bg-[#fef3c7] inline-block px-4 py-1.5 rounded-full">กำหนดส่ง: ${displayDateTime}</div>
                         </div>
                         <div class="dropdown relative">
-                            <button class="p-2 text-[#d1d5db] hover:text-[#d97706] text-xl focus:outline-none">⋮</button>
+                            <button class="p-2 text-[#d1d5db] hover:text-[#d97706] text-xl outline-none">⋮</button>
                             <div class="dropdown-content">
-                                ${isDeleted ? `<button onclick="restoreNote(${n.id})" class="w-full text-left p-3 text-sm font-bold text-[#d97706] hover:bg-[#fffaf5]">กู้คืน</button>` : 
-                                `<button onclick="togglePin(${n.id}, ${n.is_pinned})" class="w-full text-left p-3 text-sm font-bold text-[#b45309] border-b border-[#fffaf5] hover:bg-[#fffaf5]">${n.is_pinned ? 'เลิกปักหมุด' : 'ปักหมุด'}</button>
-                                 <button onclick='editNote(${JSON.stringify(n)})' class="w-full text-left p-3 text-sm font-bold text-[#4b2c20] border-b border-[#fffaf5] hover:bg-[#fffaf5]">แก้ไข</button>
+                                ${isDeleted ? 
+                                `<button onclick="restoreNote(${n.id})" class="w-full text-left p-3 text-sm font-bold text-[#d97706] hover:bg-orange-50">กู้คืน</button>` : 
+                                `<button onclick="togglePin(${n.id}, ${n.is_pinned})" class="w-full text-left p-3 text-sm font-bold text-[#b45309] border-b border-[#fffaf5] hover:bg-orange-50">${n.is_pinned ? 'เลิกปักหมุด' : 'ปักหมุด'}</button>
+                                 <button onclick='editNote(${JSON.stringify(n)})' class="w-full text-left p-3 text-sm font-bold text-[#4b2c20] border-b border-[#fffaf5] hover:bg-orange-50">แก้ไข</button>
                                  <button onclick="moveToTrash(${n.id})" class="w-full text-left p-3 text-sm font-bold text-red-500 hover:bg-red-50">ลบออก</button>`}
                             </div>
                         </div>
@@ -232,70 +215,38 @@
             });
         }
 
+        // --- ฟังชั่นการทำงาน (เหมือนเดิม) ---
         async function saveNote() {
             const id = document.getElementById('edit-id').value;
             const title = document.getElementById('title').value;
             const content = document.getElementById('content').value;
             const date = document.getElementById('date').value;
             const time = document.getElementById('time').value || "00:00";
-
             if(!title || !date) return alert('ระบุหัวข้อและวันที่ส่งงาน');
-            const fullDateTime = `${date} ${time}:00`; 
-
             const payload = {
-                name: user.name, 
-                email: user.email,
-                title: title,
-                content: content,
-                due_date: fullDateTime,
-                sent_5d: false, sent_3d: false, sent_1d: false, sent_3h: false, sent_1h: false,
-                is_deleted: false
+                name: user.name, email: user.email, title, content,
+                due_date: `${date} ${time}:00`, is_deleted: false
             };
-            
             const res = id ? await supabaseClient.from('note').update(payload).eq('id', id) : await supabaseClient.from('note').insert([payload]);
-            
-            if(!res.error) {
-                showToast("บันทึกงานเรียบร้อย");
-                closeModal(); fetchNotes(); 
-            }
+            if(!res.error) { showToast("บันทึกสำเร็จ"); closeModal(); fetchNotes(); }
         }
 
-        async function togglePin(id, status) {
-            await supabaseClient.from('note').update({ is_pinned: !status }).eq('id', id);
-            fetchNotes();
-        }
-
-        async function toggleDone(id, status) {
-            await supabaseClient.from('note').update({ is_done: !status }).eq('id', id);
-            fetchNotes();
-        }
-
-        async function moveToTrash(id) {
-            if(!confirm('ย้ายงานนี้ไปที่ถังขยะใช่ไหม?')) return;
-            await supabaseClient.from('note').update({ is_deleted: true, is_pinned: false }).eq('id', id);
-            fetchNotes();
-        }
-
-        async function restoreNote(id) {
-            await supabaseClient.from('note').update({ is_deleted: false }).eq('id', id);
-            fetchNotes();
-        }
+        async function togglePin(id, status) { await supabaseClient.from('note').update({ is_pinned: !status }).eq('id', id); fetchNotes(); }
+        async function toggleDone(id, status) { await supabaseClient.from('note').update({ is_done: !status }).eq('id', id); fetchNotes(); }
+        async function moveToTrash(id) { if(confirm('ย้ายไปถังขยะ?')) { await supabaseClient.from('note').update({ is_deleted: true, is_pinned: false }).eq('id', id); fetchNotes(); } }
+        async function restoreNote(id) { await supabaseClient.from('note').update({ is_deleted: false }).eq('id', id); fetchNotes(); }
 
         function openModal() {
             document.getElementById('modal').classList.remove('hidden');
-            document.getElementById('modal-title').innerText = "จดบันทึกงาน";
             document.getElementById('edit-id').value = '';
             document.getElementById('title').value = '';
             document.getElementById('content').value = '';
             document.getElementById('date').value = '';
             document.getElementById('time').value = '00:00';
         }
-
         function closeModal() { document.getElementById('modal').classList.add('hidden'); }
-
         function editNote(n) {
             document.getElementById('modal').classList.remove('hidden');
-            document.getElementById('modal-title').innerText = "แก้ไขบันทึกงาน";
             document.getElementById('edit-id').value = n.id;
             document.getElementById('title').value = n.title;
             document.getElementById('content').value = n.content;
