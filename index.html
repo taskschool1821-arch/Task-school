@@ -6,53 +6,90 @@
     <title>Task School - บันทึกการเรียน</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
-    <script type="text/javascript">
-       (function(){ emailjs.init("Isihs3VZwTT1xNymB"); })();
-    </script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap');
-        body { font-family: 'Sarabun', sans-serif; background-color: #f8fafc; }
+        
+        /* ปรับโทนสีหลัก */
+        :root {
+            --primary-orange: #d97706; /* ส้มตุ่น */
+            --bg-cream: #fffaf5; /* พื้นหลังครีมนวล */
+            --accent-yellow: #f59e0b; /* เหลืองมัสตาร์ด */
+            --soft-border: #f3e8d2;
+        }
+
+        body { 
+            font-family: 'Sarabun', sans-serif; 
+            background-color: var(--bg-cream); 
+            color: #4b2c20;
+        }
+
         .hidden { display: none; }
-        .is-done { opacity: 0.5; text-decoration: line-through; }
-        .note-card { transition: all 0.2s; }
-        .dropdown-content { display: none; position: absolute; right: 0; top: 100%; background: white; border: 1px solid #ddd; border-radius: 12px; z-index: 50; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 120px; }
+        .is-done { opacity: 0.5; text-decoration: line-through; filter: grayscale(50%); }
+        
+        /* ปรับแต่งปุ่มและ Card */
+        .note-card { 
+            transition: all 0.3s ease; 
+            border: 1px solid var(--soft-border);
+            background: #ffffff;
+        }
+        .note-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(217, 119, 6, 0.1); }
+
+        .dropdown-content { 
+            display: none; position: absolute; right: 0; top: 100%; 
+            background: white; border: 1px solid var(--soft-border); 
+            border-radius: 12px; z-index: 50; box-shadow: 0 4px 12px rgba(0,0,0,0.05); width: 120px; 
+        }
         .dropdown:focus-within .dropdown-content { display: block; }
-        #toast { visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center; border-radius: 15px; padding: 16px; position: fixed; z-index: 200; left: 50%; bottom: 30px; transform: translateX(-50%); }
+
+        #toast { 
+            visibility: hidden; min-width: 250px; background-color: #4b2c20; 
+            color: #fff; text-align: center; border-radius: 20px; padding: 16px; 
+            position: fixed; z-index: 200; left: 50%; bottom: 30px; transform: translateX(-50%); 
+        }
         #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
+        
         @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
         @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
         
-        .guide-text { animation: bounceSide 2s infinite; }
+        .guide-text { animation: bounceSide 2s infinite; color: #a39382; }
         @keyframes bounceSide {
             0%, 20%, 50%, 80%, 100% { transform: translateX(0); }
             40% { transform: translateX(-10px); }
             60% { transform: translateX(-5px); }
         }
+
+        /* ปรับแต่ง Scrollbar ให้เข้ากับโทนสี */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-cream); }
+        ::-webkit-scrollbar-thumb { background: #e5d5bc; border-radius: 10px; }
     </style>
 </head>
 <body>
 
-    <div id="toast">แจ้งเตือนสำเร็จ!</div>
+    <div id="toast">บันทึกสำเร็จ!</div>
 
     <div id="login-screen" class="flex items-center justify-center min-h-screen p-4">
-        <div class="bg-white p-8 rounded-3xl shadow-xl w-full max-w-sm border border-blue-50">
-            <h1 class="text-3xl font-bold text-center mb-8 text-blue-600">Task School</h1>
-            <input type="text" id="nickname" placeholder="Name" class="w-full p-4 mb-4 border rounded-2xl outline-none focus:ring-2 focus:ring-blue-500">
-            <input type="email" id="email" placeholder="Email address" class="w-full p-4 mb-8 border rounded-2xl outline-none focus:ring-2 focus:ring-blue-500">
-            <button onclick="login()" class="w-full bg-blue-600 text-white p-4 rounded-2xl font-bold shadow-lg">เข้าสู่ระบบ</button>
+        <div class="bg-white p-8 rounded-[2rem] shadow-xl w-full max-w-sm border border-[#f3e8d2]">
+            <div class="w-20 h-20 bg-[#fef3c7] rounded-full mx-auto mb-6 flex items-center justify-center">
+                <span class="text-4xl">🎓</span>
+            </div>
+            <h1 class="text-3xl font-bold text-center mb-2 text-[#d97706]">Task School</h1>
+            <p class="text-center text-[#a39382] mb-8 text-sm">บันทึกช่วยจำสำหรับนักเรียน</p>
+            <input type="text" id="nickname" placeholder="ชื่อเล่น" class="w-full p-4 mb-4 border border-[#f3e8d2] rounded-2xl outline-none focus:ring-2 focus:ring-[#f59e0b] bg-[#fffcf8]">
+            <input type="email" id="email" placeholder="อีเมล (เพื่อแจ้งเตือน)" class="w-full p-4 mb-8 border border-[#f3e8d2] rounded-2xl outline-none focus:ring-2 focus:ring-[#f59e0b] bg-[#fffcf8]">
+            <button onclick="login()" class="w-full bg-[#d97706] text-white p-4 rounded-2xl font-bold shadow-lg hover:bg-[#b45309] transition-all">เข้าสู่ระบบ</button>
         </div>
     </div>
 
     <div id="dashboard" class="hidden min-h-screen pb-24">
-        <nav class="bg-white p-5 border-b sticky top-0 z-40 shadow-sm">
+        <nav class="bg-white/80 backdrop-blur-md p-5 border-b border-[#f3e8d2] sticky top-0 z-40">
             <div class="max-w-4xl mx-auto flex justify-between items-center mb-4">
-                <h2 class="text-xl font-bold text-blue-600">บันทึกของ <span id="user-name" class="text-gray-800"></span></h2>
-                <button onclick="logout()" class="text-gray-400 text-xs font-bold uppercase tracking-widest">Logout</button>
+                <h2 class="text-xl font-bold text-[#d97706]">บันทึกของ <span id="user-name" class="text-[#4b2c20]"></span></h2>
+                <button onclick="logout()" class="text-[#a39382] text-xs font-bold uppercase tracking-widest hover:text-[#d97706]">ออกจากระบบ</button>
             </div>
             <div class="max-w-4xl mx-auto flex gap-3 overflow-x-auto">
-                <button id="btn-all" onclick="changeView('all')" class="px-5 py-2 rounded-full bg-blue-600 text-white text-sm font-bold shadow-md">โน้ต</button>
-                <button id="btn-trash" onclick="changeView('trash')" class="px-5 py-2 rounded-full bg-gray-100 text-gray-500 text-sm font-bold">เพิ่งลบไป</button>
+                <button id="btn-all" onclick="changeView('all')" class="px-6 py-2 rounded-full bg-[#fef3c7] text-[#b45309] text-sm font-bold shadow-sm border border-[#fde68a]">โน้ตทั้งหมด</button>
+                <button id="btn-trash" onclick="changeView('trash')" class="px-6 py-2 rounded-full bg-white text-[#a39382] text-sm font-bold border border-[#f3e8d2]">ถังขยะ</button>
             </div>
         </nav>
 
@@ -61,32 +98,34 @@
         </div>
 
         <div class="fixed bottom-8 right-8 flex items-center gap-3 z-[110]">
-            <span class="guide-text text-gray-400 text-sm font-bold bg-white/80 px-3 py-1 rounded-full shadow-sm border border-gray-100">กด + เพื่อเพิ่มข้อมูล</span>
-            <button onclick="openModal()" class="w-16 h-16 bg-blue-600 text-white rounded-full text-4xl shadow-2xl flex items-center justify-center transition hover:scale-110 active:scale-95">+</button>
+            <span class="guide-text text-sm font-bold bg-white/90 px-4 py-2 rounded-full shadow-sm border border-[#f3e8d2]">เพิ่มงานใหม่ตรงนี้</span>
+            <button onclick="openModal()" class="w-16 h-16 bg-[#f59e0b] text-white rounded-full text-4xl shadow-2xl flex items-center justify-center transition hover:scale-110 active:scale-95 hover:bg-[#d97706] border-4 border-white">
+                <span class="mb-1">+</span>
+            </button>
         </div>
     </div>
 
-    <div id="modal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-[200] backdrop-blur-sm">
-        <div class="bg-white w-full max-w-md p-6 rounded-3xl shadow-2xl">
-            <h3 id="modal-title" class="text-xl font-bold mb-6">จดบันทึกงาน</h3>
+    <div id="modal" class="hidden fixed inset-0 bg-[#4b2c20]/40 flex items-center justify-center p-4 z-[200] backdrop-blur-sm">
+        <div class="bg-white w-full max-w-md p-8 rounded-[2.5rem] shadow-2xl border border-[#f3e8d2]">
+            <h3 id="modal-title" class="text-2xl font-bold mb-6 text-[#4b2c20]">จดบันทึกงาน</h3>
             <input type="hidden" id="edit-id">
-            <input type="text" id="title" placeholder="หัวข้อ" class="w-full p-4 mb-3 border border-gray-100 bg-gray-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold">
-            <textarea id="content" placeholder="รายละเอียด" class="w-full h-32 p-4 mb-3 border border-gray-100 bg-gray-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
+            <input type="text" id="title" placeholder="หัวข้อวิชา หรือชื่องาน" class="w-full p-4 mb-4 border border-[#f3e8d2] bg-[#fffcf8] rounded-2xl outline-none focus:ring-2 focus:ring-[#f59e0b] font-bold text-lg">
+            <textarea id="content" placeholder="รายละเอียดงาน..." class="w-full h-32 p-4 mb-4 border border-[#f3e8d2] bg-[#fffcf8] rounded-2xl outline-none focus:ring-2 focus:ring-[#f59e0b] resize-none text-[#6b7280]"></textarea>
             
-            <div class="grid grid-cols-2 gap-3 mb-8">
+            <div class="grid grid-cols-2 gap-4 mb-8">
                 <div>
-                    <label class="block mb-2 text-sm font-bold text-gray-500 ml-2">📅 วันที่ส่ง</label>
-                    <input type="date" id="date" class="w-full p-4 border border-gray-100 bg-gray-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500">
+                    <label class="block mb-2 text-xs font-bold text-[#a39382] ml-2 uppercase">📅 วันที่ส่ง</label>
+                    <input type="date" id="date" class="w-full p-4 border border-[#f3e8d2] bg-[#fffcf8] rounded-2xl outline-none focus:ring-2 focus:ring-[#f59e0b] text-sm">
                 </div>
                 <div>
-                    <label class="block mb-2 text-sm font-bold text-gray-500 ml-2">⏰ เวลา</label>
-                    <input type="time" id="time" class="w-full p-4 border border-gray-100 bg-gray-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500">
+                    <label class="block mb-2 text-xs font-bold text-[#a39382] ml-2 uppercase">⏰ เวลา</label>
+                    <input type="time" id="time" class="w-full p-4 border border-[#f3e8d2] bg-[#fffcf8] rounded-2xl outline-none focus:ring-2 focus:ring-[#f59e0b] text-sm">
                 </div>
             </div>
             
             <div class="flex gap-4">
-                <button type="button" onclick="closeModal()" class="flex-1 p-4 text-gray-400 font-bold">ยกเลิก</button>
-                <button type="button" onclick="saveNote()" id="btn-save" class="flex-1 p-4 bg-blue-600 text-white rounded-2xl font-bold shadow-lg">บันทึก</button>
+                <button type="button" onclick="closeModal()" class="flex-1 p-4 text-[#a39382] font-bold hover:text-[#d97706]">ยกเลิก</button>
+                <button type="button" onclick="saveNote()" id="btn-save" class="flex-1 p-4 bg-[#d97706] text-white rounded-2xl font-bold shadow-lg hover:bg-[#b45309]">บันทึกข้อมูล</button>
             </div>
         </div>
     </div>
@@ -98,22 +137,6 @@
 
         let user = { name: '', email: '' };
         let currentView = 'all';
-
-        function playNotificationSound() {
-            try {
-                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                const oscillator = audioCtx.createOscillator();
-                const gainNode = audioCtx.createGain();
-                oscillator.connect(gainNode);
-                gainNode.connect(audioCtx.destination);
-                oscillator.type = 'sine';
-                oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
-                gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-                oscillator.start();
-                gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.5);
-                oscillator.stop(audioCtx.currentTime + 0.5);
-            } catch (e) { console.log("Audio block"); }
-        }
 
         window.onload = function() {
             const savedUser = localStorage.getItem('task_school_user');
@@ -150,8 +173,8 @@
 
         function changeView(view) {
             currentView = view;
-            document.getElementById('btn-all').className = view === 'all' ? 'px-5 py-2 rounded-full bg-blue-600 text-white text-sm font-bold shadow-md' : 'px-5 py-2 rounded-full bg-gray-100 text-gray-500 text-sm font-bold';
-            document.getElementById('btn-trash').className = view === 'trash' ? 'px-5 py-2 rounded-full bg-blue-600 text-white text-sm font-bold shadow-md' : 'px-5 py-2 rounded-full bg-gray-100 text-gray-500 text-sm font-bold';
+            document.getElementById('btn-all').className = view === 'all' ? 'px-6 py-2 rounded-full bg-[#fef3c7] text-[#b45309] text-sm font-bold shadow-sm border border-[#fde68a]' : 'px-6 py-2 rounded-full bg-white text-[#a39382] text-sm font-bold border border-[#f3e8d2]';
+            document.getElementById('btn-trash').className = view === 'trash' ? 'px-6 py-2 rounded-full bg-[#fef3c7] text-[#b45309] text-sm font-bold shadow-sm border border-[#fde68a]' : 'px-6 py-2 rounded-full bg-white text-[#a39382] text-sm font-bold border border-[#f3e8d2]';
             fetchNotes();
         }
 
@@ -166,7 +189,7 @@
                 .order('due_date', { ascending: true });
 
             const list = document.getElementById('note-list');
-            list.innerHTML = (data && data.length) ? '' : '<div class="text-center py-20 text-gray-300">ไม่มีข้อมูล</div>';
+            list.innerHTML = (data && data.length) ? '' : '<div class="text-center py-20 text-[#a39382]">ไม่มีบันทึกในส่วนนี้</div>';
             
             if(data) data.forEach(n => {
                 const rawDate = n.due_date.replace('T', ' ');
@@ -176,22 +199,22 @@
                 const displayDateTime = `${day}/${m}/${parseInt(y)+543} ${displayTime}`;
 
                 list.innerHTML += `
-                <div class="bg-white p-6 rounded-3xl border ${n.is_pinned ? 'border-blue-300 ring-2 ring-blue-50' : 'border-gray-100'} shadow-sm relative note-card ${n.is_done ? 'is-done' : ''}">
-                    ${n.is_pinned ? '<span class="absolute -top-2 -left-2 bg-blue-500 text-white text-[10px] px-2 py-1 rounded-lg font-bold">PINNED</span>' : ''}
+                <div class="note-card p-6 rounded-[2rem] relative ${n.is_done ? 'is-done' : ''} ${n.is_pinned ? 'bg-[#fffbeb] border-[#fde68a]' : 'bg-white'}">
+                    ${n.is_pinned ? '<span class="absolute -top-2 -left-2 bg-[#f59e0b] text-white text-[10px] px-3 py-1 rounded-full font-bold shadow-sm">สำคัญ</span>' : ''}
                     <div class="flex items-start gap-4">
-                        <input type="checkbox" ${n.is_done ? 'checked' : ''} onchange="toggleDone(${n.id}, ${n.is_done})" class="mt-1.5 w-6 h-6 rounded-full border-gray-300 text-blue-600 focus:ring-blue-500">
+                        <input type="checkbox" ${n.is_done ? 'checked' : ''} onchange="toggleDone(${n.id}, ${n.is_done})" class="mt-1.5 w-6 h-6 rounded-full border-[#f3e8d2] text-[#d97706] focus:ring-[#f59e0b]">
                         <div class="flex-1">
-                            <h4 class="font-bold text-xl mb-2 text-gray-800">${n.title}</h4>
-                            <p class="text-gray-600 text-sm mb-6 whitespace-pre-wrap leading-relaxed">${n.content || ''}</p>
-                            <div class="text-xs font-bold text-blue-500 bg-blue-50/50 inline-block px-4 py-1.5 rounded-full">📅 กำหนดส่ง: ${displayDateTime}</div>
+                            <h4 class="font-bold text-lg mb-1 text-[#4b2c20]">${n.title}</h4>
+                            <p class="text-[#6b7280] text-sm mb-4 whitespace-pre-wrap leading-relaxed">${n.content || ''}</p>
+                            <div class="text-[11px] font-bold text-[#b45309] bg-[#fef3c7] inline-block px-4 py-1.5 rounded-full">🔔 กำหนดส่ง: ${displayDateTime}</div>
                         </div>
                         <div class="dropdown relative">
-                            <button class="p-2 text-gray-300 hover:text-gray-600 text-2xl">⋮</button>
+                            <button class="p-2 text-[#d1d5db] hover:text-[#d97706] text-xl">⋮</button>
                             <div class="dropdown-content">
-                                ${isDeleted ? `<button onclick="restoreNote(${n.id})" class="w-full text-left p-3 text-sm font-bold text-blue-500">กู้คืน</button>` : 
-                                `<button onclick="togglePin(${n.id}, ${n.is_pinned})" class="w-full text-left p-3 text-sm font-bold text-blue-600 border-b">${n.is_pinned ? 'เลิกปักหมุด' : 'ปักหมุด'}</button>
-                                 <button onclick='editNote(${JSON.stringify(n)})' class="w-full text-left p-3 text-sm font-bold text-gray-700 border-b">แก้ไข</button>
-                                 <button onclick="moveToTrash(${n.id})" class="w-full text-left p-3 text-sm font-bold text-red-500">ลบ</button>`}
+                                ${isDeleted ? `<button onclick="restoreNote(${n.id})" class="w-full text-left p-3 text-sm font-bold text-[#d97706]">กู้คืน</button>` : 
+                                `<button onclick="togglePin(${n.id}, ${n.is_pinned})" class="w-full text-left p-3 text-sm font-bold text-[#b45309] border-b border-[#fffaf5]">${n.is_pinned ? 'เลิกปักหมุด' : 'ปักหมุด'}</button>
+                                 <button onclick='editNote(${JSON.stringify(n)})' class="w-full text-left p-3 text-sm font-bold text-[#4b2c20] border-b border-[#fffaf5]">แก้ไข</button>
+                                 <button onclick="moveToTrash(${n.id})" class="w-full text-left p-3 text-sm font-bold text-red-400">ลบออก</button>`}
                             </div>
                         </div>
                     </div>
@@ -206,28 +229,23 @@
             const date = document.getElementById('date').value;
             const time = document.getElementById('time').value || "00:00";
 
-            if(!title || !date) return alert('กรุณาระบุหัวข้อและวันที่');
+            if(!title || !date) return alert('กรุณาระบุหัวข้อและวันที่ส่งงาน');
             const fullDateTime = `${date} ${time}:00`; 
 
-            // เพิ่มคอลัมน์สำหรับการเช็คแจ้งเตือนครบทุกช่วงเวลา
             const payload = {
                 name: user.name, 
                 email: user.email,
                 title: title,
                 content: content,
                 due_date: fullDateTime,
-                sent_5d: false, // แจ้งเตือน 5 วัน
-                sent_3d: false, // แจ้งเตือน 3 วัน
-                sent_1d: false, // แจ้งเตือน 1 วัน
-                sent_3h: false, // แจ้งเตือน 3 ชม.
-                sent_1h: false  // แจ้งเตือน 1 ชม.
+                sent_5d: false, sent_3d: false, sent_1d: false, sent_3h: false, sent_1h: false,
+                is_deleted: false
             };
             
             const res = id ? await supabaseClient.from('note').update(payload).eq('id', id) : await supabaseClient.from('note').insert([payload]);
             
             if(!res.error) {
-                playNotificationSound();
-                showToast("บันทึกเรียบร้อย!");
+                showToast("บันทึกงานเรียบร้อย ✨");
                 closeModal(); fetchNotes(); 
             }
         }
@@ -243,7 +261,7 @@
         }
 
         async function moveToTrash(id) {
-            if(!confirm('ย้ายไปถังขยะ?')) return;
+            if(!confirm('ย้ายงานนี้ไปที่ถังขยะใช่ไหม?')) return;
             await supabaseClient.from('note').update({ is_deleted: true, is_pinned: false }).eq('id', id);
             fetchNotes();
         }
