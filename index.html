@@ -30,38 +30,56 @@
             border: 1px solid var(--soft-border);
             background: #ffffff;
             position: relative;
+            z-index: 1;
         }
 
-        /* --- จุดที่แก้ไขใหม่ --- */
+        .note-card:focus-within { z-index: 50 !important; }
+        
         .dropdown-content { 
             display: none; 
             position: absolute; 
             right: 0; 
-            bottom: 100%; /* เปลี่ยนจาก top เป็น bottom เพื่อให้เด้งขึ้นข้างบน */
-            margin-bottom: 8px; /* เว้นระยะห่างจากปุ่มเล็กน้อย */
+            bottom: 100%; 
+            margin-bottom: 10px;
             background: white; 
             border: 1px solid var(--soft-border); 
-            border-radius: 12px; 
-            z-index: 999; 
-            box-shadow: 0 10px 25px rgba(0,0,0,0.15); 
-            width: 140px; 
+            border-radius: 16px; 
+            z-index: 1000 !important; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2); 
+            width: 150px; 
+            overflow: hidden;
         }
-
-        /* บังคับให้การ์ดที่กำลังถูกกด ลอยขึ้นมาเหนือเพื่อนแบบเด็ดขาด */
-        .note-card:focus-within { 
-            z-index: 100 !important; 
-        }
-        /* ---------------------- */
-
+        
         .dropdown:focus-within .dropdown-content { display: block; }
+
+        .btn-tab {
+            padding: 8px 24px;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 700;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+
+        .btn-active {
+            background-color: #fef3c7;
+            color: #b45309;
+            border-color: #fde68a;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+
+        .btn-inactive {
+            background-color: #f3f4f6; 
+            color: #9ca3af; 
+            border-color: #e5e7eb;
+        }
 
         #toast { 
             visibility: hidden; min-width: 250px; background-color: #4b2c20; 
             color: #fff; text-align: center; border-radius: 20px; padding: 16px; 
-            position: fixed; z-index: 200; left: 50%; bottom: 30px; transform: translateX(-50%); 
+            position: fixed; z-index: 2000; left: 50%; bottom: 30px; transform: translateX(-50%); 
         }
         #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
-        
         @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
         @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
     </style>
@@ -89,12 +107,15 @@
                 <button onclick="logout()" class="text-[#a39382] text-xs font-bold uppercase tracking-widest hover:text-[#d97706]">ออกจากระบบ</button>
             </div>
             <div class="max-w-4xl mx-auto flex gap-3 overflow-x-auto">
-                <button id="btn-all" onclick="changeView('all')" class="px-6 py-2 rounded-full bg-[#fef3c7] text-[#b45309] text-sm font-bold shadow-sm border border-[#fde68a]">โน้ตทั้งหมด</button>
-                <button id="btn-trash" onclick="changeView('trash')" class="px-6 py-2 rounded-full bg-white text-[#a39382] text-sm font-bold border border-[#f3e8d2]">ถังขยะ</button>
+                <button id="btn-all" onclick="changeView('all')" class="btn-tab btn-active">โน้ตทั้งหมด</button>
+                <button id="btn-trash" onclick="changeView('trash')" class="btn-tab btn-inactive">ถังขยะ</button>
             </div>
         </nav>
 
         <div class="max-w-4xl mx-auto p-4">
+            <div id="trash-info" class="hidden mb-4 p-4 bg-red-50 border border-red-100 rounded-2xl text-red-600 text-xs font-bold text-center">
+                ⚠️ โน้ตในถังขยะจะถูกลบถาวรโดยอัตโนมัติหลังจากผ่านไป 7 วัน
+            </div>
             <div id="note-list" class="flex flex-col gap-4"></div>
         </div>
 
@@ -105,7 +126,7 @@
         </div>
     </div>
 
-    <div id="modal" class="hidden fixed inset-0 bg-[#4b2c20]/40 flex items-center justify-center p-4 z-[200] backdrop-blur-sm">
+    <div id="modal" class="hidden fixed inset-0 bg-[#4b2c20]/40 flex items-center justify-center p-4 z-[2000] backdrop-blur-sm">
         <div class="bg-white w-full max-w-md p-8 rounded-[2.5rem] shadow-2xl border border-[#f3e8d2]">
             <h3 id="modal-title" class="text-2xl font-bold mb-6 text-[#4b2c20]">จดบันทึกงาน</h3>
             <input type="hidden" id="edit-id">
@@ -169,7 +190,38 @@
 
         function changeView(view) {
             currentView = view;
+            const btnAll = document.getElementById('btn-all');
+            const btnTrash = document.getElementById('btn-trash');
+            const trashInfo = document.getElementById('trash-info');
+
+            if (view === 'all') {
+                btnAll.classList.replace('btn-inactive', 'btn-active');
+                btnTrash.classList.replace('btn-active', 'btn-inactive');
+                trashInfo.classList.add('hidden');
+            } else {
+                btnTrash.classList.replace('btn-inactive', 'btn-active');
+                btnAll.classList.replace('btn-active', 'btn-inactive');
+                trashInfo.classList.remove('hidden');
+                // เรียกฟังก์ชันเคลียร์ถังขยะอัตโนมัติเมื่อกดเข้าหน้าถังขยะ
+                autoCleanTrash();
+            }
             fetchNotes();
+        }
+
+        // --- ฟังก์ชันลบถาวรอัตโนมัติ (เกิน 7 วัน) ---
+        async function autoCleanTrash() {
+            const sevenDaysAgo = new Date();
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+            const isoSevenDaysAgo = sevenDaysAgo.toISOString();
+
+            // ลบแถวที่ is_deleted เป็น true และถูกลบมานานกว่า 7 วัน (เช็กจาก updated_at ของฐานข้อมูล)
+            const { error } = await supabaseClient
+                .from('note')
+                .delete()
+                .eq('is_deleted', true)
+                .lt('updated_at', isoSevenDaysAgo); // updated_at จะเปลี่ยนตอนเรากด moveToTrash
+            
+            if(!error) console.log("Cleaned old notes");
         }
 
         async function fetchNotes() {
@@ -183,7 +235,7 @@
                 .order('due_date', { ascending: true });
 
             const list = document.getElementById('note-list');
-            list.innerHTML = (data && data.length) ? '' : '<div class="text-center py-20 text-[#a39382]">ไม่มีบันทึกในส่วนนี้</div>';
+            list.innerHTML = (data && data.length) ? '' : `<div class="text-center py-20 text-[#a39382]">${currentView === 'trash' ? 'ถังขยะว่างเปล่า' : 'ไม่มีบันทึกในส่วนนี้'}</div>`;
             
             if(data) data.forEach(n => {
                 const rawDate = n.due_date.replace('T', ' ');
@@ -201,10 +253,11 @@
                             <div class="text-[11px] font-bold text-[#b45309] bg-[#fef3c7] inline-block px-4 py-1.5 rounded-full">กำหนดส่ง: ${displayDateTime}</div>
                         </div>
                         <div class="dropdown relative">
-                            <button class="p-2 text-[#d1d5db] hover:text-[#d97706] text-xl outline-none">⋮</button>
+                            <button class="p-2 text-[#d1d5db] hover:text-[#d97706] text-xl outline-none focus:outline-none">⋮</button>
                             <div class="dropdown-content">
                                 ${isDeleted ? 
-                                `<button onclick="restoreNote(${n.id})" class="w-full text-left p-3 text-sm font-bold text-[#d97706] hover:bg-orange-50">กู้คืน</button>` : 
+                                `<button onclick="restoreNote(${n.id})" class="w-full text-left p-3 text-sm font-bold text-[#d97706] hover:bg-orange-50">กู้คืน</button>
+                                 <button onclick="permanentDelete(${n.id})" class="w-full text-left p-3 text-sm font-bold text-red-500 hover:bg-red-50">ลบถาวรทันที</button>` : 
                                 `<button onclick="togglePin(${n.id}, ${n.is_pinned})" class="w-full text-left p-3 text-sm font-bold text-[#b45309] border-b border-[#fffaf5] hover:bg-orange-50">${n.is_pinned ? 'เลิกปักหมุด' : 'ปักหมุด'}</button>
                                  <button onclick='editNote(${JSON.stringify(n)})' class="w-full text-left p-3 text-sm font-bold text-[#4b2c20] border-b border-[#fffaf5] hover:bg-orange-50">แก้ไข</button>
                                  <button onclick="moveToTrash(${n.id})" class="w-full text-left p-3 text-sm font-bold text-red-500 hover:bg-red-50">ลบออก</button>`}
@@ -215,7 +268,14 @@
             });
         }
 
-        // --- ฟังชั่นการทำงาน (เหมือนเดิม) ---
+        // ลบถาวรแบบ Manual
+        async function permanentDelete(id) {
+            if(!confirm('ยืนยันลบโน้ตนี้ถาวร? ไม่สามารถกู้คืนได้')) return;
+            await supabaseClient.from('note').delete().eq('id', id);
+            fetchNotes();
+            showToast("ลบข้อมูลถาวรแล้ว");
+        }
+
         async function saveNote() {
             const id = document.getElementById('edit-id').value;
             const title = document.getElementById('title').value;
@@ -233,11 +293,18 @@
 
         async function togglePin(id, status) { await supabaseClient.from('note').update({ is_pinned: !status }).eq('id', id); fetchNotes(); }
         async function toggleDone(id, status) { await supabaseClient.from('note').update({ is_done: !status }).eq('id', id); fetchNotes(); }
-        async function moveToTrash(id) { if(confirm('ย้ายไปถังขยะ?')) { await supabaseClient.from('note').update({ is_deleted: true, is_pinned: false }).eq('id', id); fetchNotes(); } }
+        async function moveToTrash(id) { 
+            if(confirm('ย้ายไปถังขยะ?')) { 
+                // เมื่อ update is_deleted เป็น true ค่า updated_at ใน Supabase จะเปลี่ยนเป็นเวลาปัจจุบันโดยอัตโนมัติ
+                await supabaseClient.from('note').update({ is_deleted: true, is_pinned: false }).eq('id', id); 
+                fetchNotes(); 
+            } 
+        }
         async function restoreNote(id) { await supabaseClient.from('note').update({ is_deleted: false }).eq('id', id); fetchNotes(); }
 
         function openModal() {
             document.getElementById('modal').classList.remove('hidden');
+            document.getElementById('modal-title').innerText = "จดบันทึกงาน";
             document.getElementById('edit-id').value = '';
             document.getElementById('title').value = '';
             document.getElementById('content').value = '';
@@ -247,6 +314,7 @@
         function closeModal() { document.getElementById('modal').classList.add('hidden'); }
         function editNote(n) {
             document.getElementById('modal').classList.remove('hidden');
+            document.getElementById('modal-title').innerText = "แก้ไขบันทึกงาน";
             document.getElementById('edit-id').value = n.id;
             document.getElementById('title').value = n.title;
             document.getElementById('content').value = n.content;
