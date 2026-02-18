@@ -1,4 +1,7 @@
 {
+  "name": "task-school",
+  "version": "1.0.0",
+  "main": "api/server.js",
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
     "resend": "^2.0.0"
